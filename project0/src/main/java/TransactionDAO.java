@@ -1,0 +1,124 @@
+import java.sql.*;
+
+@SuppressWarnings("SqlResolve")
+public class TransactionDAO implements CRUD<Transaction> {
+    private static TransactionDAO transDAO;
+    private Connection conn;
+
+    public static TransactionDAO getDAO() {
+        return transDAO;
+    }
+
+    public static void setDAO(TransactionDAO transDAO) {
+        TransactionDAO.transDAO = transDAO;
+    }
+
+    public TransactionDAO (Connection connection){
+        this.conn = connection;
+    }
+
+    @Override
+    public Transaction saveChanges(Transaction target) {
+        boolean valid = false;
+        if (target.getApproved() == 2){
+            try(PreparedStatement ps = conn.prepareStatement("SELECT public.approve_transfer( ? )")){
+                ps.setInt(1, target.getId());
+                ResultSet rs = ps.executeQuery();
+                rs.next();
+                valid = rs.getBoolean(1);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        else{
+            try(PreparedStatement ps = conn.prepareStatement("UPDATE public.transactions " +
+                    "SET status_id=3 " +
+                    "WHERE transaction_id= ? ;")){
+                ps.setInt(1, target.getId());
+                int rows = ps.executeUpdate();
+                valid = rows > 0;
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        if (valid){
+            return target;
+        }
+        else {
+            return null;
+        }
+    }
+
+    @Override
+    public Transaction insertNew(Transaction target) {
+        boolean valid = false;
+        if (target.getDestination() == 0){
+            try (PreparedStatement ps = conn.prepareStatement("SELECT public.make_withdrawal(" +
+                    " ? , ? )")){
+                ps.setFloat(1, target.getValue());
+                ps.setInt(2, target.getOrigin());
+                ResultSet rs = ps.executeQuery();
+                rs.next();
+                valid = rs.getBoolean(1);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        else if (target.getOrigin() == 0){
+            try (PreparedStatement ps = conn.prepareStatement("SELECT public.make_deposit(" +
+                    " ? , ? )")){
+                ps.setFloat(1, target.getValue());
+                ps.setInt(2, target.getDestination());
+                ResultSet rs = ps.executeQuery();
+                rs.next();
+                valid = rs.getBoolean(1);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        else {
+            try (PreparedStatement ps = conn.prepareStatement("INSERT INTO public.transactions(" +
+                    "amount, " +
+                    "origin, " +
+                    "destination, " +
+                    "status_id) " +
+                    "VALUES (?, ?, ?, 1);")){
+                ps.setFloat(1, target.getValue());
+                ps.setInt(2, target.getOrigin());
+                ps.setInt(3, target.getDestination());
+                int rows = ps.executeUpdate();
+                valid = rows == 1;
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+        if (valid){
+            return target;
+        }
+        else {
+            return null;
+        }
+    }
+
+    @Override
+    public Transaction read(Transaction target) {
+        Transaction trans =  null;
+        try (PreparedStatement ps = conn.prepareStatement("SELECT transaction_id, amount, origin, destination, status_id\n" +
+                "\tFROM public.transaction " +
+                "WHERE transaction_id = ?;")) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()){
+                trans = new Transaction(
+                        rs.getInt("transaction_id"),
+                        rs.getFloat("amount"),
+                        rs.getInt("destination"),
+                        rs.getInt("origin"),
+                        rs.getInt("status_id")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return trans;
+    }
+}
