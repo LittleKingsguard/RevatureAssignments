@@ -1,4 +1,6 @@
+import java.math.BigDecimal;
 import java.sql.*;
+import java.util.ArrayList;
 
 @SuppressWarnings("SqlResolve")
 public class TransactionDAO implements CRUD<Transaction> {
@@ -55,7 +57,7 @@ public class TransactionDAO implements CRUD<Transaction> {
         if (target.getDestination() == 0){
             try (PreparedStatement ps = conn.prepareStatement("SELECT public.make_withdrawal(" +
                     " ? , ? )")){
-                ps.setFloat(1, target.getValue());
+                ps.setBigDecimal(1, new BigDecimal(target.getValue()));
                 ps.setInt(2, target.getOrigin());
                 ResultSet rs = ps.executeQuery();
                 rs.next();
@@ -67,7 +69,7 @@ public class TransactionDAO implements CRUD<Transaction> {
         else if (target.getOrigin() == 0){
             try (PreparedStatement ps = conn.prepareStatement("SELECT public.make_deposit(" +
                     " ? , ? )")){
-                ps.setFloat(1, target.getValue());
+                ps.setBigDecimal(1, new BigDecimal(target.getValue()));
                 ps.setInt(2, target.getDestination());
                 ResultSet rs = ps.executeQuery();
                 rs.next();
@@ -83,7 +85,7 @@ public class TransactionDAO implements CRUD<Transaction> {
                     "destination, " +
                     "status_id) " +
                     "VALUES (?, ?, ?, 1);")){
-                ps.setFloat(1, target.getValue());
+                ps.setBigDecimal(1, new BigDecimal(target.getValue()));
                 ps.setInt(2, target.getOrigin());
                 ps.setInt(3, target.getDestination());
                 int rows = ps.executeUpdate();
@@ -115,6 +117,26 @@ public class TransactionDAO implements CRUD<Transaction> {
                         rs.getInt("origin"),
                         rs.getInt("status_id")
                 );
+            }
+        } catch (SQLException e) {
+            //e.printStackTrace();
+        }
+        return trans;
+    }
+
+    public ArrayList<Transaction> readAll() {
+        ArrayList<Transaction> trans =  new ArrayList<Transaction>();
+        try (PreparedStatement ps = conn.prepareStatement("SELECT transaction_id, amount, origin, destination, status_id\n" +
+                "\tFROM public.transactions;")) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()){
+                trans.add(new Transaction(
+                        rs.getInt("transaction_id"),
+                        rs.getFloat("amount"),
+                        rs.getInt("destination"),
+                        rs.getInt("origin"),
+                        rs.getInt("status_id")
+                ));
             }
         } catch (SQLException e) {
             e.printStackTrace();

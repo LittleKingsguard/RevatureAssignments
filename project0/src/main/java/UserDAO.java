@@ -1,4 +1,5 @@
 import java.sql.*;
+import java.util.ArrayList;
 
 public class UserDAO implements CRUD<User> {
     private static UserDAO USER_DAO;
@@ -96,6 +97,23 @@ public class UserDAO implements CRUD<User> {
             e.printStackTrace();
             return null;
         }
+    }
+    public ArrayList<Customer> readCustomers(){
+        ArrayList<Customer> u = new ArrayList<Customer>();
+        try (PreparedStatement newPs = conn.prepareStatement("Select * from Users Where is_employee = ?;"))
+        {
+            newPs.setBoolean(1, false);
+            ResultSet rs = newPs.executeQuery();
+            while(rs.next()) {
+                u.add(new Customer(
+                        rs.getString("username"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return u;
     }
 
     @Override

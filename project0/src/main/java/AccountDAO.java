@@ -1,3 +1,4 @@
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 
@@ -46,7 +47,7 @@ public class AccountDAO implements CRUD<Account> {
         ArrayList<Account> accounts = new ArrayList<Account>();
         try (PreparedStatement ps = conn.prepareStatement("SELECT * FROM account " +
                 "JOIN User_Account ON account.account_id = user_account.account_id " +
-                "JOIN Users ON user_account.username = users.username " +
+                "JOIN Users ON user_account.user_id = users.username " +
                 "WHERE status_id = 2 " +
                 "ORDER BY account.account_id")) {
             ResultSet rs = ps.executeQuery();
@@ -64,12 +65,12 @@ public class AccountDAO implements CRUD<Account> {
                 }
                 else if (!found){
                     found = true;
-                    id = rs.getInt("account.account_id");
-                    balance = rs.getFloat("account.balance");
+                    id = rs.getInt("account_id");
+                    balance = rs.getFloat("balance");
                     customers.add(new Customer (
-                            rs.getString("users.username"),
-                            rs.getString("users.first_name"),
-                            rs.getString("users.last_name")
+                            rs.getString("username"),
+                            rs.getString("first_name"),
+                            rs.getString("last_name")
                     ));
                 }
                 else {
@@ -78,12 +79,12 @@ public class AccountDAO implements CRUD<Account> {
                             customers,
                             balance,
                             2));
-                    id = rs.getInt("account.account_id");
-                    balance = rs.getFloat("account.balance");
+                    id = rs.getInt("account_id");
+                    balance = rs.getFloat("balance");
                     customers.add(new Customer (
-                            rs.getString("users.username"),
-                            rs.getString("users.first_name"),
-                            rs.getString("users.last_name")
+                            rs.getString("username"),
+                            rs.getString("first_name"),
+                            rs.getString("last_name")
                     ));
                 }
             }
@@ -122,10 +123,18 @@ public class AccountDAO implements CRUD<Account> {
     @Override
     public Account insertNew(Account target) {
         Account acc = null;
-        try(PreparedStatement ps = conn.prepareStatement("INSERT INTO Account (balance, status_id)" +
-                " Values (?, 1)")){
-            ps.setFloat(1, target.getBalance());
-            if (0 <= ps.executeUpdate()){
+        try(CallableStatement cs = conn.prepareCall("CALL public.add_account( ? , ?)")){
+            ArrayList<Customer> users = target.getHolders();
+            String[] usernames = new String[users.size()];
+            int i = 0;
+            for (Customer c: users) {
+                usernames[i] = c.getUsername();
+                i++;
+            }
+            Array names = conn.createArrayOf("text", usernames);
+            cs.setArray(1, names);
+            cs.setBigDecimal(2, new BigDecimal(target.getBalance()));
+            if (0 <= cs.executeUpdate()){
                 acc = target;
             }
 

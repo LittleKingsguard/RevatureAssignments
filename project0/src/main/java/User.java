@@ -3,6 +3,10 @@ public class User {
     protected String firstName;
     protected String lastName;
 
+    public String getFullName(){
+        return firstName + " " + lastName;
+    }
+
     public String getUsername() {
         return username;
     }
@@ -31,5 +35,8 @@ public class User {
         this.username = username;
         this.firstName = firstName;
         this.lastName = lastName;
+    }
+
+    public void controller() {
     }
 }
